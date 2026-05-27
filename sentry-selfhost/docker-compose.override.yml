@@ -1,0 +1,26 @@
+# Overrides layered on top of the upstream getsentry/self-hosted compose file.
+# Place small, local-friendly tweaks here (port binding, log limits, etc).
+
+services:
+  web:
+    ports:
+      - "${SENTRY_BIND:-9000}:9000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  relay:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

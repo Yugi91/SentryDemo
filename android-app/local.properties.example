@@ -1,0 +1,12 @@
+# Copy to local.properties and edit. Never commit local.properties.
+
+# Path to your local Android SDK
+sdk.dir=/Users/<you>/Library/Android/sdk
+
+# DSN copied from Sentry: Settings → Projects → <project> → Client Keys
+# For emulator targeting host-machine Sentry, use 10.0.2.2 as the host:
+sentry.dsn=http://<public_key>@10.0.2.2:9000/<project_id>
+
+# Optional release/environment overrides
+sentry.environment=debug
+sentry.userId=demo-user-001

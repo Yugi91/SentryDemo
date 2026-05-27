@@ -89,6 +89,49 @@ Refreshed per-action via `SentryContextEnricher.enrich(actionName)`:
    - `sentry.dsn` – use host `10.0.2.2` for emulator, your LAN IP for a physical device on Wi-Fi
 4. `./gradlew :app:installDebug` (or open in Android Studio Giraffe+).
 
+## Tests
+
+Two layers — fast hermetic JVM/integration tests and emulator-driven UI tests.
+
+### JVM (unit + integration)
+
+```
+./gradlew :app:testDebugUnitTest
+```
+
+These use `SentryCaptureRule` (`src/test/.../testing/SentryCaptureRule.kt`) which initializes the real Sentry SDK with `beforeSendTransaction`/`beforeSend`/`beforeBreadcrumb` interceptors that *capture and drop* every envelope — no network, no DSN required, fully deterministic. Asserts run against the typed `SentryTransaction` / `SentryEvent` / `Breadcrumb` objects directly.
+
+Coverage:
+
+| Suite | Cases | What it proves |
+| --- | --- | --- |
+| `SentryWorkflowTrackerTest` | 4 | Workflow DSL emits one named transaction with each `step()` as a child span; data attributes attach to the right span; failures mark spans `internal_error` and attach the throwable; `markFailed()` works without throwing; start/finish breadcrumbs are emitted in order |
+| `PhotoWorkflowRepositoryImplTest` | 4 | capture/save/sync simulator returns sensible payloads; `forceFailure=true` always throws `PhotoSyncException` |
+| `RunPhotoWorkflowUseCaseTest` | 2 | Happy-path workflow runs 3 OK spans + 3 step results; `forceFailure=true` marks only `sync_image` as FAILED, captures the exception, returns a partial report |
+| `SimulateDelayUseCaseTest` | 1 | Delay action produces a `delay_action` transaction with a `processing` child span carrying `duration_ms` data |
+
+### Instrumented (emulator/device)
+
+```
+./gradlew :app:connectedDebugAndroidTest
+```
+
+Uses a custom `HiltTestRunner` that boots `HiltTestApplication` (so the full Hilt graph wires up against test-time bindings) plus `MainActivity` (`@AndroidEntryPoint`).
+
+Coverage:
+
+| Suite | Cases | What it proves |
+| --- | --- | --- |
+| `DemoScreenInstrumentedTest` | 2 | All five demo buttons render with expected titles and there are exactly five `Run` actions; tapping the delay button drives the activity log to `delay_action: finished` within 5 s |
+
+### Last verified results (Medium_Phone_API_35, Android 15)
+
+| | Cases | Result | Wall |
+| --- | --: | --- | --- |
+| JVM tests | 11 | **all pass** | ~700 ms |
+| Instrumented tests | 2 | **all pass** | ~5.2 s |
+| **Total** | **13** | **all pass** | |
+
 ## ANR & crash delivery is asynchronous
 
 On **Android 11 (API 30) and newer** Sentry uses `ApplicationExitInfo` (v2) for

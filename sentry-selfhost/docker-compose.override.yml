@@ -1,26 +1,36 @@
 # Overrides layered on top of the upstream getsentry/self-hosted compose file.
 # Place small, local-friendly tweaks here (port binding, log limits, etc).
+#
+# We cap log size on every chatty service — postgres, kafka, clickhouse and
+# the snuba/relay workers will otherwise grow unbounded on a long-running
+# demo box.
+
+x-log-rotation: &log-rotation
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   web:
     ports:
       - "${SENTRY_BIND:-9000}:9000"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *log-rotation
 
   relay:
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *log-rotation
 
   worker:
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *log-rotation
+
+  postgres:
+    logging: *log-rotation
+
+  kafka:
+    logging: *log-rotation
+
+  clickhouse:
+    logging: *log-rotation
+
+  snuba-api:
+    logging: *log-rotation

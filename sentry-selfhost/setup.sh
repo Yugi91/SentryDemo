@@ -7,8 +7,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Pin to a known-good upstream release. Bump as needed.
-SENTRY_VERSION="${SENTRY_VERSION:-25.4.0}"
+# Pin to a known-good upstream release. Override per-invocation with
+# `SENTRY_VERSION=26.5.0 ./setup.sh`. Track latest at
+# https://github.com/getsentry/self-hosted/releases
+SENTRY_VERSION="${SENTRY_VERSION:-25.8.0}"
 TARGET_DIR=".self-hosted"
 
 require() {

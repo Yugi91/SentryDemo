@@ -68,9 +68,20 @@ The Android emulator can't reach `localhost` on the host directly. Use:
 | `.env.example` | Sample env, copy to `.env` and edit |
 | `.self-hosted/` | Cloned upstream — git-ignored |
 
+## Caveats
+
+- **`.env` merge** — `setup.sh` appends our `.env` onto the upstream `.env` that `install.sh` manages. Keys we define here override upstream defaults (last-write-wins in dotenv parsing), so only set keys you actually want to customize. Don't redeclare keys `install.sh` auto-generates (`SENTRY_SECRET_KEY` in particular — see below).
+
+- **`SENTRY_SECRET_KEY` stability** — `install.sh` generates this on first run and stores it in `.self-hosted/.env`. **Don't delete `.self-hosted/.env`** between re-runs: a fresh `SENTRY_SECRET_KEY` invalidates every existing project's DSN and forces session re-issue. To wipe Sentry cleanly, run `docker compose down -v && rm -rf .self-hosted` together (don't keep the volumes around with a new secret).
+
+- **ARM64 / Apple Silicon** — all upstream images publish multi-arch (incl. `linux/arm64`) so M-series Macs work without `--platform` hacks. Verify Docker Desktop has Rosetta 2 emulation enabled if you ever need to pin a legacy x86 service.
+
+- **Bumping `SENTRY_VERSION`** — track [releases](https://github.com/getsentry/self-hosted/releases). Read the migration notes for the target tag — some major bumps run irreversible db migrations on first boot.
+
 ## Troubleshooting
 
 - **`install.sh` fails on memory check** — bump Docker Desktop memory to 16 GB+ in Settings → Resources.
-- **Port 9000 already in use** — change `SENTRY_BIND` in `.env` then re-run `install.sh`.
+- **Port 9000 already in use** — `lsof -i :9000` to find the offender, or change `SENTRY_BIND` in `.env` and re-run `install.sh`.
 - **Slow first boot** — `clickhouse`, `kafka`, `snuba`, `relay` need ~2-3 minutes to settle. `docker compose ps` should eventually show all healthy.
+- **Logs eating disk** — covered by `docker-compose.override.yml` (10 MB × 3 rotation on every chatty service). If you add new services, mirror the same `logging: *log-rotation` anchor.
 - **Reset everything** — `cd .self-hosted && docker compose down -v && cd .. && rm -rf .self-hosted && ./setup.sh`.

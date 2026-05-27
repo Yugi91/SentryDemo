@@ -89,12 +89,27 @@ Refreshed per-action via `SentryContextEnricher.enrich(actionName)`:
    - `sentry.dsn` – use host `10.0.2.2` for emulator, your LAN IP for a physical device on Wi-Fi
 4. `./gradlew :app:installDebug` (or open in Android Studio Giraffe+).
 
+## ANR & crash delivery is asynchronous
+
+On **Android 11 (API 30) and newer** Sentry uses `ApplicationExitInfo` (v2) for
+ANR detection. The system records the ANR, but **the event only ships to Sentry
+on the next app launch** — not at the moment the watchdog fires. Same story for
+hard crashes: Sentry queues the event to disk in the dying process and the
+queue flushes on the next start. So after tapping **Crash** or **ANR 8 s**:
+
+1. Wait for the system to kill / restart the app (or kill it manually).
+2. Re-open the app.
+3. The event will appear in Sentry within a few seconds.
+
+On Android ≤ 10 (watchdog v1), ANR events ship immediately, but you lose the
+held-locks information that AppExitInfo provides.
+
 ## Troubleshooting
 
 - **DSN warning at startup, no events show up** — `local.properties.sentry.dsn` is empty. The app still launches but Sentry is a no-op.
 - **`InvalidDsnException`** — DSN must include scheme, host, port, public key, and project id. Compare to `http://abc123@10.0.2.2:9000/2`.
-- **Crash event never appears** — Sentry caches the crash and ships it on next launch. Re-open the app once after the crash.
-- **ANR never reported** — the watchdog needs the process to be alive long enough to send. Don't kill the app during the 8 s busy-loop.
+- **Crash event never appears** — see "ANR & crash delivery is asynchronous" above. Re-open the app after the crash.
+- **ANR never reported** — same async caveat. Also confirm the busy-loop ran for the full 8 s (the watchdog threshold is 5 s).
 - **Cleartext blocked** — your Sentry host is not in `network_security_config.xml`. Add its IP/host and rebuild.
 - **Slow build / KSP errors** — Hilt requires `kapt → ksp` toolchain match. We use `ksp 2.0.21-1.0.27` against Kotlin `2.0.21`.
 
